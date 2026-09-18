@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+torch
+torch-geometric
+folium
+streamlit-folium
+geopy
+scikit-learn
+geopandas
