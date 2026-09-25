@@ -9,6 +9,8 @@ on:
 jobs:
   update-and-retrain:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       # Step 1
