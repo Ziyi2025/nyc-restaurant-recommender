@@ -216,3 +216,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project-specific
+backups/
+final_models_5feat/
+final_models_7feat/
+final_models/
+models/
+models_grid/
+*.pth
+backup_scores/
+backup_data/
