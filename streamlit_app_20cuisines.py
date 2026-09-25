@@ -63,11 +63,15 @@ def load_scores(cuisine):
 
 @st.cache_data
 def load_restaurants(cuisine):
-    path = os.path.join(DATA_DIR, "allcuisine.csv")
-    df = pd.read_csv(path)
+    df = pd.read_csv(r"C:\Users\dell\Desktop\JOB\2Internship\data\allcuisine.csv")
     df = df.sort_values('INSPECTION DATE', ascending=False).drop_duplicates(subset=['CAMIS'], keep='first')
+
+    df['Latitude'] = pd.to_numeric(df['Latitude'], errors='coerce')
+    df['Longitude'] = pd.to_numeric(df['Longitude'], errors='coerce')
+    df = df.dropna(subset=['Latitude', 'Longitude'])
     df = df[(df['Latitude'] != 0) & (df['Longitude'] != 0)]
     df = df.dropna(subset=['CUISINE DESCRIPTION'])
+    
     df_target = df[df['CUISINE DESCRIPTION'] == cuisine]
     return df_target[['Latitude', 'Longitude', 'DBA', 'SCORE', 'GRADE']]
 
