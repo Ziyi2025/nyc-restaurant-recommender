@@ -15,7 +15,6 @@ st.set_page_config(
 st.title("🍽️ NYC Restaurant Location Suitability Recommender")
 st.markdown("Select a cuisine type and enter any location in NYC to see how suitable it is for opening a new restaurant.")
 
-# DATA_DIR = r"C:\Users\dell\Desktop\JOB\2Internship\data_add"
 DATA_DIR = os.path.dirname(os.path.abspath(__file__))
 
 CUISINE_OPTIONS = {
@@ -49,7 +48,6 @@ BOROUGH_COORDS = {
     "Staten Island": (40.5795, -74.1502),
 }
 
-#侧边栏 
 st.sidebar.header("⚙️ Configuration")
 
 # ---------- 1. 菜系选择 ----------
@@ -65,8 +63,8 @@ def load_scores(cuisine):
 
 @st.cache_data
 def load_restaurants(cuisine):
-    #df = pd.read_csv(r"C:\Users\dell\Desktop\JOB\2Internship\data\allcuisine.csv")
-    df = pd.read_csv(os.path.join(DATA_DIR, "allcuisine.csv"))
+    path = os.path.join(DATA_DIR, "allcuisine.csv")
+    df = pd.read_csv(path)
     df = df.sort_values('INSPECTION DATE', ascending=False).drop_duplicates(subset=['CAMIS'], keep='first')
     df = df[(df['Latitude'] != 0) & (df['Longitude'] != 0)]
     df = df.dropna(subset=['CUISINE DESCRIPTION'])
@@ -117,14 +115,13 @@ if address:
     except Exception as e:
         st.sidebar.warning(f"Geocoding error: {str(e)[:50]}")
 
-# ==================== 打分逻辑 ====================
+# 打分逻辑
 grid_x = int(lon / GRID_SIZE)
 grid_y = int(lat / GRID_SIZE)
 grid_id = f"{grid_x}_{grid_y}"
 
 result = grid_info[grid_info['grid_id'] == grid_id]
 
-# ==================== 显示结果 ====================
 st.subheader(f"📍 Results for {selected_label}")
 
 if len(result) == 0:
@@ -164,16 +161,35 @@ else:
             st.write(f"- {selected_cuisine}: {target_count}")
             st.write(f"- Avg inspection score: {avg_score:.1f}")
 
-# ==================== 地图 ====================
+# 地图
 st.subheader(f"🗺️ {selected_label} Restaurants in NYC")
-st.caption(f"Each marker represents an existing {selected_cuisine} restaurant. The blue star is your selected location.")
+st.caption(f"Each marker represents an existing {selected_cuisine} restaurant. Gold markers with numbers show the Top 10 recommended grids.")
 
 m = folium.Map(location=[40.7128, -74.0060], zoom_start=11, tiles='OpenStreetMap')
 
+# ---------- 1. 显示所有网格评分 ----------
+for _, r in grid_info.iterrows():
+    s = r['suitability_score']
+    if s >= 70:
+        color = '#2ecc71'
+    elif s >= 50:
+        color = '#f39c12'
+    else:
+        color = '#e74c3c'
+    
+    folium.CircleMarker(
+        location=[r['center_lat'], r['center_lon']],
+        radius=3,
+        color=color,
+        fill=True,
+        fill_color=color,
+        fill_opacity=0.3,
+        weight=0,
+    ).add_to(m)
+
+# ---------- 2. 显示已有餐厅 ----------
 for _, r in restaurant_points.iterrows():
     grade = r.get('GRADE', 'N/A')
-    score_val = r.get('SCORE', 'N/A')
-    
     if grade == 'A':
         color = 'green'
     elif grade == 'B':
@@ -185,59 +201,97 @@ for _, r in restaurant_points.iterrows():
     
     folium.CircleMarker(
         location=[r['Latitude'], r['Longitude']],
-        radius=4,
+        radius=3,
         color=color,
         fill=True,
         fill_color=color,
-        fill_opacity=0.7,
+        fill_opacity=0.6,
         popup=folium.Popup(
             f"<b>{r['DBA']}</b><br>"
             f"Grade: {grade}<br>"
-            f"Inspection Score: {score_val} <i>(lower is better)</i>",
+            f"Inspection Score: {r.get('SCORE', 'N/A')} <i>(lower is better)</i>",
             max_width=250
         )
     ).add_to(m)
 
+# ---------- 3. Top 10 推荐网格 ----------
+top10 = grid_info.nlargest(10, 'suitability_score').reset_index(drop=True)
+
+for i, row in top10.iterrows():
+    rank = i + 1
+    folium.Marker(
+        location=[row['center_lat'], row['center_lon']],
+        popup=folium.Popup(
+            f"<b>🏆 Rank #{rank}</b><br>"
+            f"Score: {row['suitability_score']:.1f}/100<br>"
+            f"Restaurants: {int(row['n_restaurants'])}<br>"
+            f"{selected_cuisine}: {int(row['n_target'])}<br>"
+            f"Cuisine Diversity: {int(row['cuisine_diversity'])}",
+            max_width=220
+        ),
+        tooltip=f"Rank #{rank} | Score: {row['suitability_score']:.1f}",
+        icon=folium.DivIcon(
+            html=f'''
+                <div style="
+                    background-color: gold;
+                    border: 3px solid darkorange;
+                    border-radius: 50%;
+                    width: 32px;
+                    height: 32px;
+                    text-align: center;
+                    line-height: 26px;
+                    font-weight: bold;
+                    font-size: 14px;
+                    color: #333;
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                ">{rank}</div>
+            ''',
+            icon_size=(32, 32),
+            icon_anchor=(16, 16)
+        )
+    ).add_to(m)
+
+# ---------- 4. 用户位置 ----------
 if score is not None:
     folium.Marker(
         [lat, lon],
         popup=f"Your Location<br>Score: {score:.1f}",
+        tooltip="Your Location",
         icon=folium.Icon(color='blue', icon='star', prefix='fa')
     ).add_to(m)
 
-st_folium(m, width=1200, height=500, returned_objects=[])
+# ---------- 5. 渲染地图 ----------
+st_folium(m, width=1200, height=550, returned_objects=[])
 
-# ==================== Top 10 ====================
+# ==================== Top 10 表格 ====================
 st.subheader(f"🏆 Top 10 Recommended Grids for {selected_label}")
 
-top10 = grid_info.nlargest(10, 'suitability_score')[
-    ['grid_id', 'center_lat', 'center_lon', 'suitability_score', 'n_restaurants', 'n_target']
-].copy()
-top10.columns = ['Grid ID', 'Latitude', 'Longitude', 'Score', 'Restaurants', f'{selected_cuisine} Count']
-top10 = top10.reset_index(drop=True)
-top10.index = top10.index + 1
+top10_display = top10[['grid_id', 'center_lat', 'center_lon',
+                        'suitability_score', 'n_restaurants', 'n_target']].copy()
+top10_display.columns = ['Grid ID', 'Latitude', 'Longitude', 'Score', 'Restaurants', f'{selected_cuisine} Count']
+top10_display.index = top10_display.index + 1
 
 st.dataframe(
-    top10.style.format({'Latitude': '{:.4f}', 'Longitude': '{:.4f}', 'Score': '{:.1f}'})
-    .background_gradient(subset=['Score'], cmap='RdYlGn'),
+    top10_display.style.format({
+        'Latitude': '{:.4f}',
+        'Longitude': '{:.4f}',
+        'Score': '{:.2f}'
+    }).background_gradient(subset=['Score'], cmap='RdYlGn'),
     width='stretch'
 )
 
-# ==================== 图例和说明 ====================
+# 图例
 st.markdown("---")
 col1, col2 = st.columns([1, 2])
 
 with col1:
     st.markdown("### 📖 Legend")
     st.markdown(f"""
-    **Restaurant markers ({selected_cuisine}):**
-    - 🟢 Green: A-grade
-    - 🟠 Orange: B-grade
-    - 🔴 Red: C-grade
-    - ⚪ Gray: No grade
-    
-    **Your location:**
-    - 🔵 Blue star
+    **Map layers:**
+    - 🟢🟡🔴 Semi-transparent dots: grid suitability score
+    - 🟢🟠🔴 Small dots: existing {selected_cuisine} restaurants (by grade)
+    - 🏆 Gold numbered markers: Top 10 recommended grids
+    - 🔵 Blue star: your selected location
     
     **Score interpretation:**
     - 🟢 70-100: Highly suitable
@@ -255,5 +309,5 @@ with col2:
     **Model details:**
     - Grid size: {GRID_SIZE}° (~{GRID_SIZE*111:.0f} km)
     - Features: restaurant density, average inspection score, cuisine diversity, target cuisine count
-    - 5-fold multi-seed training for stable results
+    - 5-seed multi-run training for stable results
     """)
