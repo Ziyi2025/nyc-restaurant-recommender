@@ -1,0 +1,50 @@
+name: Monthly Data Update & Model Retrain
+
+on:
+  schedule:
+    - cron: '0 14 1 * *'
+
+  workflow_dispatch:
+
+jobs:
+  update-and-retrain:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # Step 2
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      # Step 3
+      - name: Install dependencies
+        run: |
+          pip install pandas numpy torch torch-geometric scikit-learn sodapy
+      
+      # Step 4
+      - name: Update data
+        env:
+          SOCRATA_TOKEN: ${{ secrets.SOCRATA_TOKEN }}
+        run: python update_data.py
+      
+      # Step 5
+      - name: Retrain models
+        run: python retrain_models.py
+      
+      # Step 6
+      - name: Commit and push changes
+        run: |
+          git config user.name "Auto Update Bot"
+          git config user.email "auto@example.com"
+          git add allcuisine.csv
+          git add final_scores_*.csv
+          git add update_log.csv
+          git add retrain_results.csv
+          git add model_trained_date.txt
+          git commit -m "Monthly update: $(date +%Y-%m-%d)" || echo "No changes to commit"
+          git push
