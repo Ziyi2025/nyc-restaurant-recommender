@@ -348,7 +348,7 @@ st.markdown("---")
 st.subheader(f"⚠️ Risk Analysis for {selected_label}")
 
 if score is not None:
-    # 计算全市平均（用当前菜系的评分文件）
+    # 计算全市平均
     city_avg_target = grid_info['n_target'].mean()
     city_avg_restaurants = grid_info['n_restaurants'].mean()
     
