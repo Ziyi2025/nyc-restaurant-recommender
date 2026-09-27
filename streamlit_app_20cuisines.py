@@ -84,12 +84,13 @@ except FileNotFoundError as e:
 
 # ---------- 2. 行政区快捷选择 ----------
 st.sidebar.subheader("2️⃣ Borough Quick Select")
-borough = st.sidebar.selectbox("Select Borough", ["Custom"] + list(BOROUGH_COORDS.keys()))
+borough = st.sidebar.selectbox(
+    "Select Borough", 
+    list(BOROUGH_COORDS.keys()), 
+    index=0
+)
 
-if borough != "Custom":
-    default_lat, default_lon = BOROUGH_COORDS[borough]
-else:
-    default_lat, default_lon = 40.7580, -73.9855
+default_lat, default_lon = BOROUGH_COORDS[borough]
 
 # ---------- 3. 地址输入 ----------
 st.sidebar.subheader("3️⃣ Address Input (optional)")
@@ -286,7 +287,7 @@ st.dataframe(
 
 # ==================== Market Trend ====================
 st.markdown("---")
-st.subheader(f"📈 Market Trend for {selected_label}")
+st.subheader(f"📈 Market Trend for {selected_label} Restaurants in NYC")
 
 @st.cache_data
 def load_trend_data(cuisine):
@@ -345,7 +346,7 @@ with st.expander("📖 Market Trend — How to Read"):
 
 # ==================== Risk Analyzer ====================
 st.markdown("---")
-st.subheader(f"⚠️ Risk Analysis for {selected_label}")
+st.subheader(f"⚠️ Location Risk for Opening a {selected_label} Restaurant")
 
 if score is not None:
     # 计算全市平均
