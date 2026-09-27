@@ -117,10 +117,11 @@ for target, grid_size in CUISINE_GRID_CONFIG.items():
 
     # 网格聚合
     grid_info = df_all.groupby('grid_id').agg(
-        center_lat=('Latitude', 'mean'),
-        center_lon=('Longitude', 'mean'),
-        n_restaurants=('CAMIS', 'count'),
-        avg_score=('SCORE', lambda x: pd.to_numeric(x, errors='coerce').mean()),
+    center_lat=('Latitude', 'mean'),
+    center_lon=('Longitude', 'mean'),
+    n_restaurants=('CAMIS', 'count'),
+    avg_score=('SCORE', lambda x: pd.to_numeric(x, errors='coerce').mean()),
+    grade_a_ratio=('GRADE', lambda x: (x == 'A').sum() / len(x)),
     ).reset_index()
     grid_info['avg_score'] = grid_info['avg_score'].fillna(0)
 
@@ -239,7 +240,8 @@ for target, grid_size in CUISINE_GRID_CONFIG.items():
     # 保存评分文件
     score_path = os.path.join(DATA_DIR, f"final_scores_{target.replace('/', '_').replace(' ', '_')}.csv")
     grid_info[['grid_id', 'center_lat', 'center_lon', 'n_restaurants', 'avg_score',
-               'cuisine_diversity', target_col, 'suitability_score', 'label']].to_csv(score_path, index=False)
+           'grade_a_ratio', 'cuisine_diversity', target_col, 
+           'suitability_score', 'label']].to_csv(score_path, index=False)
 
     # 保存模型
     model_path = os.path.join(MODEL_DIR, f"final_model_{target.replace('/', '_').replace(' ', '_')}.pth")
