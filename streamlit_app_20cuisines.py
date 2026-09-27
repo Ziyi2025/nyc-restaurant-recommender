@@ -348,10 +348,24 @@ st.markdown("---")
 st.subheader(f"⚠️ Risk Analysis for {selected_label}")
 
 if score is not None:
+    # 计算全市平均（用当前菜系的评分文件）
+    city_avg_target = grid_info['n_target'].mean()
+    city_avg_restaurants = grid_info['n_restaurants'].mean()
+    
     # 三个维度的风险
     hygiene_risk = min(avg_score / 30, 1.0)
-    competition_risk = min(np.log1p(target_count) / np.log1p(20), 1.0)
-    saturation_risk = min(n_restaurants / 100, 1.0)
+    
+    # 竞争风险：相对全市平均
+    if city_avg_target > 0:
+        competition_risk = min(target_count / (city_avg_target * 2), 1.0)
+    else:
+        competition_risk = 0
+    
+    # 饱和风险：相对全市平均
+    if city_avg_restaurants > 0:
+        saturation_risk = min(n_restaurants / (city_avg_restaurants * 2), 1.0)
+    else:
+        saturation_risk = 0
     
     # 综合风险评分
     risk_score = (
@@ -369,9 +383,16 @@ if score is not None:
     if risk_score >= 70:
         st.error(f"🚨 **High risk** — this location has significant challenges.")
     elif risk_score >= 40:
-        st.warning(f"⚠️ **Moderate risk** — evaluate carefully before proceeding.")
+        st.warning(f"⚠️ **Moderate risk** — evaluate carefully.")
     else:
         st.success(f"✅ **Low risk** — this location appears relatively safe.")
+    
+    # 加一句说明，解释两个指标的关系
+    st.info(f"""
+    💡 **Note:** Suitability Score ({score:.1f}) and Risk Score ({risk_score:.1f}) measure different things.
+    A location can be both **highly attractive** (strong market) and **high-risk** (intense competition).
+    Use both indicators together to make a balanced decision.
+    """)
     
     # ---------- Risk Analyzer 图例 ----------
     with st.expander("📖 Risk Analyzer — How to Read"):
