@@ -319,7 +319,7 @@ with col2:
     else:
         st.info("No borough data available.")
 
-# ---------- Market Trend 图例（可展开） ----------
+# ---------- Market Trend 图例 ----------
 with st.expander("📖 Market Trend — How to Read"):
     st.markdown(f"""
     **What this shows:**
@@ -373,7 +373,7 @@ if score is not None:
     else:
         st.success(f"✅ **Low risk** — this location appears relatively safe.")
     
-    # ---------- Risk Analyzer 图例（可展开） ----------
+    # ---------- Risk Analyzer 图例 ----------
     with st.expander("📖 Risk Analyzer — How to Read"):
         st.markdown(f"""
         **What this shows:**
