@@ -380,9 +380,9 @@ if score is not None:
     col3.metric("⚔️ Competition Risk", f"{competition_risk*100:.0f}%")
     col4.metric("📉 Saturation Risk", f"{saturation_risk*100:.0f}%")
     
-    if risk_score >= 70:
+    if risk_score >= 85:
         st.error(f"🚨 **High risk** — this location has significant challenges.")
-    elif risk_score >= 40:
+    elif risk_score >= 60:
         st.warning(f"⚠️ **Moderate risk** — evaluate carefully.")
     else:
         st.success(f"✅ **Low risk** — this location appears relatively safe.")
