@@ -315,3 +315,82 @@ with col2:
     - Features: restaurant density, average inspection score, cuisine diversity, target cuisine count
     - 5-seed multi-run training for stable results
     """)
+
+# ==================== Market Trend ====================
+st.markdown("---")
+st.subheader(f"📈 Market Trend for {selected_label}")
+
+# 从 allcuisine.csv 加载历史数据
+@st.cache_data
+def load_trend_data(cuisine):
+    df = pd.read_csv(os.path.join(DATA_DIR, "allcuisine.csv"))
+    df = df.dropna(subset=['INSPECTION DATE', 'CUISINE DESCRIPTION'])
+    df = df[df['CUISINE DESCRIPTION'] == cuisine].copy()
+    
+    # 提取年份
+    df['year'] = pd.to_datetime(df['INSPECTION DATE'], errors='coerce').dt.year
+    df = df.dropna(subset=['year'])
+    df['year'] = df['year'].astype(int)
+    
+    # 按年份统计
+    yearly = df.groupby('year').size().reset_index(name='count')
+    yearly = yearly[yearly['year'] >= 2015]
+    
+    # 按行政区统计
+    by_borough = df.groupby('BORO').size().reset_index(name='count')
+    
+    return yearly, by_borough
+
+yearly, by_borough = load_trend_data(selected_cuisine)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.write("**Yearly Restaurant Count**")
+    if len(yearly) > 0:
+        st.line_chart(yearly.set_index('year'), height=300)
+    else:
+        st.info("No historical data available.")
+
+with col2:
+    st.write("**Distribution by Borough**")
+    if len(by_borough) > 0:
+        st.bar_chart(by_borough.set_index('BORO'), height=300)
+    else:
+        st.info("No borough data available.")
+
+# ==================== Risk Analyzer ====================
+st.markdown("---")
+st.subheader(f"⚠️ Risk Analysis for {selected_label}")
+
+if score is not None:
+    # 计算风险指标
+    hygiene_risk = min(row['avg_score'] / 30, 1.0)  # 平均分30分以上算高风险
+    competition_risk = min(target_count / 10, 1.0)   # 10家以上同类算高竞争
+    quality_risk = 1 - row['grade_a_ratio'] if 'grade_a_ratio' in row else 0.5
+    
+    # 综合风险评分（0-100，越高风险越大）
+    risk_score = (hygiene_risk * 0.3 + competition_risk * 0.3 + quality_risk * 0.4) * 100
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("🚨 Overall Risk", f"{risk_score:.1f}/100")
+    col2.metric("🦠 Hygiene Risk", f"{hygiene_risk*100:.0f}%")
+    col3.metric("⚔️ Competition Risk", f"{competition_risk*100:.0f}%")
+    col4.metric("⭐ Quality Risk", f"{quality_risk*100:.0f}%")
+    
+    # 风险等级
+    if risk_score >= 70:
+        st.error(f"🚨 **High risk** — this location has significant challenges.")
+    elif risk_score >= 40:
+        st.warning(f"⚠️ **Moderate risk** — evaluate carefully before proceeding.")
+    else:
+        st.success(f"✅ **Low risk** — this location appears relatively safe.")
+    
+    # 风险解释
+    with st.expander("📊 Risk Breakdown"):
+        st.write("**Risk factors:**")
+        st.write(f"- Average inspection score in grid: **{avg_score:.1f}** (higher = worse hygiene)")
+        st.write(f"- Number of {selected_cuisine} restaurants: **{target_count}** (higher = more competition)")
+        st.write(f"- A-grade ratio: **{row.get('grade_a_ratio', 0)*100:.0f}%** (lower = lower quality)")
+else:
+    st.info("Select a location to see risk analysis.")
